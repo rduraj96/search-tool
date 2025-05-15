@@ -1,103 +1,191 @@
-import Image from "next/image";
+// app/page.tsx
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Import shadcn Select components
+import Link from "next/link";
+import { useState } from "react";
+
+interface SearchParams {
+  jobTitle: string;
+  location: string;
+  // keywords: string;
+  site: string;
+  sortBy: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [params, setParams] = useState<SearchParams>({
+    jobTitle: "",
+    location: "",
+    // keywords: "",
+    site: "greenhouse",
+    sortBy: "any",
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const sites = [
+    {
+      value: "greenhouse",
+      label: "Greenhouse",
+      domain: "boards.greenhouse.io",
+    },
+    { value: "lever", label: "Lever", domain: "jobs.lever.co" },
+    { value: "linkedin", label: "LinkedIn", domain: "linkedin.com" },
+  ];
+
+  const sortOptions = [
+    { value: "any", label: "Any time" },
+    { value: "d", label: "Past day" },
+    { value: "w", label: "Past week" },
+    { value: "m", label: "Past month" },
+    { value: "y", label: "Past year" },
+  ];
+
+  const handleInputChange = (name: string, value: string) => {
+    setParams((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const generateQuery = () => {
+    const { jobTitle, location, site, sortBy } = params;
+    const selectedSite = sites.find((s) => s.value === site);
+    if (!selectedSite) return "";
+
+    const jobTitles = jobTitle
+      .split(",")
+      .map((title) => title.trim())
+      .filter((title) => title)
+      .map((title) => `"${title}"`);
+    const jobTitleQuery =
+      jobTitles.length > 0 ? `(${jobTitles.join(" OR ")})` : "";
+
+    const locations = location
+      .split(",")
+      .map((location) => location.trim())
+      .filter((location) => location)
+      .map((location) => `${location}`);
+    const locationsQuery =
+      locations.length > 0 ? `${locations.join(" OR ")}` : "";
+
+    const queryParts = [];
+    queryParts.push(`site:${selectedSite.domain}`);
+    if (jobTitleQuery) queryParts.push(jobTitleQuery);
+    if (locationsQuery) queryParts.push(`AND "${locationsQuery}"`);
+
+    const baseQuery = queryParts.join(" ");
+    const sortParam = sortBy !== "any" ? `&tbs=qdr:${sortBy}` : "";
+    return `https://www.google.com/search?q=${encodeURIComponent(
+      baseQuery
+    )}${sortParam}`;
+  };
+
+  const queryUrl = generateQuery();
+  const queryPreview = queryUrl
+    ? decodeURIComponent(queryUrl.split("?q=")[1]?.split("&")[0] || "")
+    : "Enter parameters to see the query";
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="p-8 rounded-lg shadow-lg w-full max-w-md bg-accent">
+        <h1 className="text-2xl font-bold mb-6 text-center">
+          Job Search Query Generator
+        </h1>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Job Title</Label>
+            <Input
+              type="text"
+              name="jobTitle"
+              value={params.jobTitle}
+              onChange={(e) => handleInputChange("jobTitle", e.target.value)}
+              placeholder="e.g., Software Engineer, Full-Stack Developer"
             />
-            Deploy now
-          </a>
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Input
+              type="text"
+              name="location"
+              value={params.location}
+              onChange={(e) => handleInputChange("location", e.target.value)}
+              placeholder="e.g., New York, Remote"
+            />
+          </div>
+          {/* <div className="space-y-2">
+            <Label>Keywords</Label>
+            <Input
+              type="text"
+              name="keywords"
+              value={params.keywords}
+              onChange={(e) => handleInputChange("keywords", e.target.value)}
+              placeholder="e.g., remote senior"
+            />
+          </div> */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="space-y-2 w-full">
+              <Label>Job Platform</Label>
+              <Select
+                value={params.site}
+                onValueChange={(value) => handleInputChange("site", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((site) => (
+                    <SelectItem key={site.value} value={site.value}>
+                      {site.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 w-full">
+              <Label>Sort By</Label>
+              <Select
+                value={params.sortBy}
+                onValueChange={(value) => handleInputChange("sortBy", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a time range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6">
+          <Label>Generated Query:</Label>
           <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href={queryUrl}
             target="_blank"
             rel="noopener noreferrer"
+            className="text-blue-600 hover:underline break-all"
           >
-            Read our docs
+            {queryPreview || "Enter parameters to generate a query"}
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        {queryUrl && (
+          <Button asChild size={"lg"} className="w-full mt-6">
+            <Link href={queryUrl} target="_blank" rel="noopener noreferrer">
+              Search on Google
+            </Link>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
